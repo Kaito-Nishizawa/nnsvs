@@ -587,6 +587,8 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             else:
                 mgc_ = mgc
             out = torch.cat([mgc_, lf0_, vuv, bap_], dim=-1)
+            # print(out.shape)
+            # print(out[0])
             assert out.shape[-1] == self.out_dim
             # TODO: better design
             return out, out
@@ -594,6 +596,7 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             return (mgc, lf0, vuv, bap), lf0_residual
 
     def inference(self, x, lengths=None):
+        # print(lengths)
         return pad_inference(
             model=self,
             x=x,
@@ -928,6 +931,7 @@ class MDNMultistreamSeparateF0MelModel(BaseModel):
             return (mel, lf0, vuv), lf0_residual
 
     def inference(self, x, lengths=None):
+        print(lengths)
         return pad_inference(
             model=self,
             x=x,

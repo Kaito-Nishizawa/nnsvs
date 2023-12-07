@@ -2,7 +2,7 @@ import json
 import time
 from copy import deepcopy
 from pathlib import Path
-
+import inspect
 import numpy as np
 import torch
 from hydra.utils import instantiate
@@ -119,9 +119,10 @@ class SPSVS(BaseSVS):
         if isinstance(model_dir, str):
             model_dir = Path(model_dir)
 
+        # print(model_dir) # .cache/nnsvs/r9y9/yoko_latest/
         # search for config.yaml
         assert model_dir / "config.yaml"
-        self.config = OmegaConf.load(model_dir / "config.yaml")
+        self.config = OmegaConf.load(model_dir / "config.yaml") # config.yamlの内容が辞書形式で読み込まれる ex.'sample_rate': 48000
         self.feature_type = self.config.get("feature_type", "world")
         self.sample_rate = self.config.get("sample_rate", 48000)
 
@@ -131,15 +132,18 @@ class SPSVS(BaseSVS):
         )
 
         self.pitch_idx = get_pitch_index(self.binary_dict, self.numeric_dict)
+        # print(self.pitch_idx) # 286 #pitchに関する情報がdictのどこから始まっているかを示している？
         self.pitch_indices = get_pitch_indices(self.binary_dict, self.numeric_dict)
+        # print(self.pitch_indices) # [285, 286, 287]
 
         # Time-lag model
         self.timelag_config = OmegaConf.load(model_dir / "timelag_model.yaml")
         self.timelag_model = instantiate(self.timelag_config.netG).to(device)
+        # print(self.timelag_model) # /home/nishizawa/nnsvs/streamlit_demo/nnsvs/model.py:547 nnsvs.model.MDN
         checkpoint = torch.load(
             model_dir / "timelag_model.pth",
             map_location=device,
-        )
+        ) # modelのweightが載っている
         self.timelag_model.load_state_dict(checkpoint["state_dict"])
 
         self.timelag_in_scaler = MinMaxScaler(
@@ -155,7 +159,7 @@ class SPSVS(BaseSVS):
 
         # Duration model
         self.duration_config = OmegaConf.load(model_dir / "duration_model.yaml")
-        self.duration_model = instantiate(self.duration_config.netG).to(device)
+        self.duration_model = instantiate(self.duration_config.netG).to(device) # nnsvs.model.MDN
         checkpoint = torch.load(
             model_dir / "duration_model.pth",
             map_location=device,
@@ -175,7 +179,7 @@ class SPSVS(BaseSVS):
 
         # Acoustic model
         self.acoustic_config = OmegaConf.load(model_dir / "acoustic_model.yaml")
-        self.acoustic_model = instantiate(self.acoustic_config.netG).to(device)
+        self.acoustic_model = instantiate(self.acoustic_config.netG).to(device) # nnsvs.model.ResSkipF0FFConvLSTM
         checkpoint = torch.load(
             model_dir / "acoustic_model.pth",
             map_location=device,
@@ -196,7 +200,7 @@ class SPSVS(BaseSVS):
         )
 
         # (Optional) lf0 model
-        if (model_dir / "lf0_model.pth").exists():
+        if (model_dir / "lf0_model.pth").exists():# False
             assert hasattr(self.acoustic_model, "lf0_model")
             self.logger.info("Loading an external lf0 model.")
             checkpoint = torch.load(
@@ -208,7 +212,7 @@ class SPSVS(BaseSVS):
         self.acoustic_model.eval()
 
         # Post-filter
-        if (model_dir / "postfilter_model.yaml").exists():
+        if (model_dir / "postfilter_model.yaml").exists(): # False
             self.postfilter_config = OmegaConf.load(model_dir / "postfilter_model.yaml")
             self.postfilter_model = instantiate(self.postfilter_config.netG).to(device)
             checkpoint = torch.load(
@@ -228,7 +232,7 @@ class SPSVS(BaseSVS):
             self.postfilter_out_scaler = None
 
         # Vocoder model
-        if (model_dir / "vocoder_model.pth").exists():
+        if (model_dir / "vocoder_model.pth").exists(): # False
             self.vocoder, self.vocoder_in_scaler, self.vocoder_config = load_vocoder(
                 model_dir / "vocoder_model.pth", device, self.acoustic_config
             )
@@ -298,7 +302,7 @@ Acoustic model: {acoustic_str}
             repr += f"Vocoder model: {vocoder_str}\n"
         else:
             repr += "Vocoder model: WORLD\n"
-
+        
         return repr
 
     def set_device(self, device):
@@ -315,7 +319,7 @@ Acoustic model: {acoustic_str}
         self.postfilter_model.to(device) if self.postfilter_model is not None else None
         self.vocoder.to(device) if self.vocoder is not None else None
 
-    def predict_timelag(self, labels):
+    def predict_timelag(self, labels, fluc=False):
         """Predict time-ag from HTS labels
 
         Args:
@@ -340,13 +344,14 @@ Acoustic model: {acoustic_str}
             allowed_range_rest=self.config.timelag.allowed_range_rest,
             force_clip_input_features=self.config.timelag.force_clip_input_features,
             frame_period=self.config.frame_period,
+            fluc=fluc,
         )
         self.logger.info(
             f"Elapsed time for time-lag prediction: {time.time() - start_time:.3f} sec"
         )
         return lag
 
-    def predict_duration(self, labels):
+    def predict_duration(self, labels, fluc=False):
         """Predict durations from HTS labels
 
         Args:
@@ -369,6 +374,7 @@ Acoustic model: {acoustic_str}
             log_f0_conditioning=self.config.log_f0_conditioning,
             force_clip_input_features=self.config.duration.force_clip_input_features,
             frame_period=self.config.frame_period,
+            fluc=fluc,
         )
         self.logger.info(
             f"Elapsed time for duration prediction: {time.time() - start_time:.3f} sec"
@@ -395,7 +401,7 @@ Acoustic model: {acoustic_str}
         )
         return duration_modified_labels
 
-    def predict_timing(self, labels):
+    def predict_timing(self, labels, fluc=[False,False]):
         """Predict timing from HTS labels
 
         Args:
@@ -404,14 +410,14 @@ Acoustic model: {acoustic_str}
         Returns:
             nnmnkwii.io.hts.HTSLabelFile: duration modified HTS labels.
         """
-        lag = self.predict_timelag(labels)
-        durations = self.predict_duration(labels)
+        lag = self.predict_timelag(labels, fluc[0])
+        durations = self.predict_duration(labels, fluc[1])
         duration_modified_full_labels = self.postprocess_duration(
             labels, durations, lag
         )
         return duration_modified_full_labels
 
-    def predict_acoustic(self, duration_modified_labels, f0_shift_in_cent=0):
+    def predict_acoustic(self, duration_modified_labels, f0_shift_in_cent=0, fluc=False):
         """Predict acoustic features from HTS labels
 
         Args:
@@ -441,6 +447,7 @@ Acoustic model: {acoustic_str}
             ),
             frame_period=self.config.frame_period,
             f0_shift_in_cent=f0_shift_in_cent,
+            fluc=fluc
         )
         self.logger.info(
             f"Elapsed time for acoustic feature prediction: {time.time() - start_time:.3f} sec"
@@ -633,6 +640,7 @@ WORLD is only supported for waveform generation"""
         loudness_norm=False,
         target_loudness=-20,
         segmented_synthesis=False,
+        fluc=[False,False,False]
     ):
         """Synthesize waveform from HTS labels.
 
@@ -664,7 +672,8 @@ WORLD is only supported for waveform generation"""
             raise ValueError(f"Unknown post-filter type: {post_filter_type}")
 
         # Predict timinigs
-        duration_modified_labels = self.predict_timing(labels)
+
+        duration_modified_labels = self.predict_timing(labels,fluc[:2])
 
         # NOTE: segmented synthesis is not well tested. There MUST be better ways
         # to do this.
@@ -681,7 +690,7 @@ WORLD is only supported for waveform generation"""
                 force_split_threshold=5.0,
             )
             from tqdm.auto import tqdm
-        else:
+        else:  # ここが実行
             duration_modified_labels_segs = [duration_modified_labels]
 
             def tqdm(x, **kwargs):
@@ -704,8 +713,9 @@ WORLD is only supported for waveform generation"""
             acoustic_features = self.predict_acoustic(
                 duration_modified_labels_seg,
                 f0_shift_in_cent=style_shift * 100,
+                fluc=fluc[2]
             )
-
+            # print(len(acoustic_features[0])) # 70
             # Post-processing for acoustic features
             # NOTE: if non-zero post_f0_shift_in_cent is specified, the output pitch
             # will be shifted as a part of post-processing
@@ -719,7 +729,6 @@ WORLD is only supported for waveform generation"""
                 fill_silence_to_rest=fill_silence_to_rest,
                 f0_shift_in_cent=-style_shift * 100,
             )
-
             # Generate waveform by vocoder
             wav = self.predict_waveform(
                 multistream_features=multistream_features,

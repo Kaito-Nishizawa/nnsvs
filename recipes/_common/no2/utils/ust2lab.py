@@ -16,6 +16,8 @@ if len(sys.argv) != 2:
 config = None
 with open(sys.argv[1], "r") as yml:
     config = yaml.load(yml, Loader=yaml.FullLoader)
+    # print(sys.argv[1])
+    # print(config)
 if config is None:
     print(f"Cannot read config file: {sys.argv[1]}.")
     sys.exit(-1)

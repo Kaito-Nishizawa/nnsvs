@@ -199,8 +199,11 @@ class GaussianDiffusion(BaseModel):
             x=x, t=t, cond=cond, clip_denoised=clip_denoised
         )
         noise = noise_like(x.shape, noise_fn, device, repeat_noise)
+        # print(noise)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
+        # print(model_log_variance[0], model_log_variance[0].exp())
+        # model_meanやmodel_log_varianceは常に固定
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
@@ -312,7 +315,6 @@ class GaussianDiffusion(BaseModel):
         t = self.K_step
         shape = (cond.shape[0], 1, self.out_dim, cond.shape[2])
         x = torch.randn(shape, device=device)
-
         if self.pndm_speedup:
             self.noise_list = deque(maxlen=4)
             iteration_interval = int(self.pndm_speedup)
@@ -327,7 +329,7 @@ class GaussianDiffusion(BaseModel):
                     iteration_interval,
                     cond,
                 )
-        else:
+        else:  # ここが実行
             for i in tqdm(reversed(range(0, t)), desc="sample time step", total=t):
                 x = self.p_sample(
                     x, torch.full((B,), i, device=device, dtype=torch.long), cond

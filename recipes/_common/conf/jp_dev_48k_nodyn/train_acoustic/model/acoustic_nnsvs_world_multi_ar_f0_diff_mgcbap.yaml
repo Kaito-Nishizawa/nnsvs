@@ -35,6 +35,7 @@ netG:
   # autoregressive models. Don't change this unless if you are sure what you do.
   # The reduction factor of 4 was chosen empirecally.
   reduction_factor: 4
+  fluc: null
 
   # You MUST set in_rest_idx, in_lf0_idx and out_lf0_idx correctly
   # otherwise the model does't work at all.

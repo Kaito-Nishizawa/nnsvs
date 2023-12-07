@@ -25,7 +25,7 @@ sinsy = pysinsy.sinsy.Sinsy()
 assert sinsy.setLanguages("j", config["sinsy_dic"])
 
 # generate full/mono labels by sinsy
-print("Convert musicxml to label files.")
+print("Convert musicxml to aaalabel files.")
 files = sorted(glob(join(expanduser(config["db_root"]), "**/*.*xml"), recursive=True))
 for path in tqdm(files):
     name = splitext(basename(path))[0]

@@ -1,5 +1,5 @@
 from warnings import warn
-
+# import inspect
 import librosa
 import numpy as np
 import pyloudnorm as pyln
@@ -64,6 +64,7 @@ def predict_timelag(
     allowed_range_rest=None,
     force_clip_input_features=False,
     frame_period=5,
+    fluc=True,
 ):
     """Predict time-lag from HTS labels
 
@@ -97,7 +98,6 @@ def predict_timelag(
         allowed_range_rest = [-40, 40]
     # round start/end times just in case.
     labels.round_()
-
     # Extract note-level labels
     note_indices = get_note_indices(labels)
     note_labels = labels[note_indices]
@@ -111,7 +111,6 @@ def predict_timelag(
         subphone_features=None,
         frame_shift=hts_frame_shift,
     ).astype(np.float32)
-
     # Adjust input features if we use log-f0 conditioning
     if log_f0_conditioning:
         if pitch_indices is None:
@@ -121,11 +120,11 @@ def predict_timelag(
                 _midi_to_hz(timelag_linguistic_features, idx, log_f0_conditioning),
                 kind="slinear",
             )
-
     # Normalization
     timelag_linguistic_features = timelag_in_scaler.transform(
         timelag_linguistic_features
     )
+
     if force_clip_input_features and isinstance(timelag_in_scaler, MinMaxScaler):
         # clip to feature range (except for pitch-related features)
         non_pitch_indices = [
@@ -138,10 +137,10 @@ def predict_timelag(
             timelag_in_scaler.feature_range[0],
             timelag_in_scaler.feature_range[1],
         )
-
     # Run model
-    x = torch.from_numpy(timelag_linguistic_features).unsqueeze(0).to(device)
-
+    # x = torch.from_numpy(timelag_linguistic_features).unsqueeze(0).to(device)
+    x = torch.from_numpy(timelag_linguistic_features).float().to(device)
+    x = x.view(1, -1, x.size(-1))
     # Run model
     if timelag_model.prediction_type() == PredictionType.PROBABILISTIC:
         # (B, T, D_out)
@@ -165,9 +164,14 @@ def predict_timelag(
                 timelag_config.has_dynamic_features,
             )
         else:
+            # ここが実行 model.py Class(MDN)
             # Apply denormalization
+            if fluc:
+                pred_timelag = np.random.normal(max_mu.squeeze(0).cpu().data.numpy(), max_sigma.squeeze(0).cpu().data.numpy())
+            else:
+                pred_timelag = max_mu.squeeze(0).cpu().data.numpy()
             pred_timelag = timelag_out_scaler.inverse_transform(
-                max_mu.squeeze(0).cpu().data.numpy()
+                pred_timelag
             )
     else:
         # (T, D_out)
@@ -185,7 +189,6 @@ def predict_timelag(
                 timelag_config.stream_sizes,
                 timelag_config.has_dynamic_features,
             )
-
     # Rounding
     pred_timelag = np.round(pred_timelag)
 
@@ -202,7 +205,6 @@ def predict_timelag(
 
     # frames -> 100 ns
     pred_timelag *= hts_frame_shift
-
     return pred_timelag
 
 
@@ -220,6 +222,7 @@ def predict_duration(
     log_f0_conditioning=True,
     force_clip_input_features=False,
     frame_period=5,
+    fluc=False,
 ):
     """Predict phoneme durations from HTS labels
 
@@ -252,7 +255,6 @@ def predict_duration(
         subphone_features=None,
         frame_shift=hts_frame_shift,
     ).astype(np.float32)
-
     if log_f0_conditioning:
         for idx in pitch_indices:
             duration_linguistic_features[:, idx] = interp1d(
@@ -280,11 +282,11 @@ def predict_duration(
     # Apply model
     x = torch.from_numpy(duration_linguistic_features).float().to(device)
     x = x.view(1, -1, x.size(-1))
-
     if duration_model.prediction_type() == PredictionType.PROBABILISTIC:
         # (B, T, D_out)
         max_mu, max_sigma = duration_model.inference(x, [x.shape[1]])
         if np.any(duration_config.has_dynamic_features):
+            # ここが実行 Class(MDN) model.py
             raise RuntimeError(
                 "Dynamic features are not supported for duration modeling"
             )
@@ -293,11 +295,14 @@ def predict_duration(
             max_sigma.squeeze(0).cpu().data.numpy() ** 2 * duration_out_scaler.var_
         )
         max_sigma_sq = np.maximum(max_sigma_sq, 1e-14)
-        max_mu = duration_out_scaler.inverse_transform(
-            max_mu.squeeze(0).cpu().data.numpy()
+        if fluc:
+            duration = np.random.normal(max_mu.squeeze(0).cpu().data.numpy(), max_sigma.squeeze(0).cpu().data.numpy())
+        else:
+            duration = max_mu.squeeze(0).cpu().data.numpy()
+        duration = duration_out_scaler.inverse_transform(
+            duration
         )
-
-        return max_mu, max_sigma_sq
+        return duration, max_sigma_sq
     else:
         # (T, D_out)
         pred_durations = (
@@ -306,6 +311,7 @@ def predict_duration(
         # Apply denormalization
         pred_durations = duration_out_scaler.inverse_transform(pred_durations)
         if np.any(duration_config.has_dynamic_features):
+            # 実行されない
             # (T, D_out) -> (T, static_dim)
             pred_durations = multi_stream_mlpg(
                 pred_durations,
@@ -347,7 +353,6 @@ def postprocess_duration(labels, pred_durations, lag, frame_period=5):
 
     for i in range(1, len(note_indices)):
         p = labels[note_indices[i - 1] : note_indices[i]]
-
         # Compute note duration with time-lag
         # eq (11)
         L = int(fe.duration_features(p)[0])
@@ -412,7 +417,6 @@ def postprocess_duration(labels, pred_durations, lag, frame_period=5):
             output_labels.end_times[-1] = p.start_times[0]
         for n in p:
             output_labels.append(n)
-
     return output_labels
 
 
@@ -464,7 +468,6 @@ def predict_timing(
     """
     hts_frame_shift = int(frame_period * 1e4)
     labels.frame_shift = hts_frame_shift
-
     pitch_indices = get_pitch_indices(binary_dict, numeric_dict)
 
     # Time-lag
@@ -500,7 +503,6 @@ def predict_timing(
         force_clip_input_features=force_clip_input_features,
         frame_period=frame_period,
     )
-
     # Normalize phoneme durations
     duration_modified_labels = postprocess_duration(labels, durations, lag)
     return duration_modified_labels
@@ -522,6 +524,7 @@ def predict_acoustic(
     force_clip_input_features=False,
     frame_period=5,
     f0_shift_in_cent=0,
+    fluc=False,
 ):
     """Predict acoustic features from HTS labels
 
@@ -550,7 +553,6 @@ def predict_acoustic(
     hts_frame_shift = int(frame_period * 1e4)
     if pitch_indices is None:
         pitch_indices = get_pitch_indices(binary_dict, numeric_dict)
-
     # Musical/linguistic features
     linguistic_features = fe.linguistic_features(
         labels,
@@ -559,7 +561,7 @@ def predict_acoustic(
         add_frame_features=True,
         subphone_features=subphone_features,
         frame_shift=hts_frame_shift,
-    )
+    ).astype(np.float32)  # astypeは付け足し
 
     if log_f0_conditioning:
         for idx in pitch_indices:
@@ -570,8 +572,7 @@ def predict_acoustic(
             if f0_shift_in_cent != 0:
                 lf0_offset = f0_shift_in_cent * np.log(2) / 1200
                 linguistic_features[:, idx] += lf0_offset
-
-    # Apply normalization
+    # Apply normal
     linguistic_features = acoustic_in_scaler.transform(linguistic_features)
     if force_clip_input_features and isinstance(acoustic_in_scaler, MinMaxScaler):
         # clip to feature range (except for pitch-related features)
@@ -589,12 +590,15 @@ def predict_acoustic(
     # Predict acoustic features
     x = torch.from_numpy(linguistic_features).float().to(device)
     x = x.view(1, -1, x.size(-1))
-
+    # type = MULTISTREAM_HYBRID diffusion
+    # type = DETERMINISTIC yoko
     if acoustic_model.prediction_type() in [
         PredictionType.PROBABILISTIC,
         PredictionType.MULTISTREAM_HYBRID,
     ]:
         # (B, T, D_out)
+        if not fluc:
+            torch.manual_seed(341)
         max_mu, max_sigma = acoustic_model.inference(x, [x.shape[1]])
         if np.any(acoustic_config.has_dynamic_features):
             # Apply denormalization
@@ -622,13 +626,16 @@ def predict_acoustic(
             )
     else:
         # (T, D_out)
-        pred_acoustic = (
-            acoustic_model.inference(x, [x.shape[1]]).squeeze(0).cpu().data.numpy()
-        )
+        # ここが実行
+        # print(len(x),len(x[0]),len(x[0][0]))# 1 3721 335
+        pred_acoustic = acoustic_model.inference(x, [x.shape[1]]).squeeze(0).cpu().data.numpy()
         # Apply denormalization
         pred_acoustic = acoustic_out_scaler.inverse_transform(pred_acoustic)
         if np.any(acoustic_config.has_dynamic_features):
+            # ここが実行
             # (T, D_out) -> (T, static_dim)
+            # print(acoustic_config.stream_sizes) # [180, 3, 1, 15, 6, 1]
+            # print(len(pred_acoustic[0])) # 206
             pred_acoustic = multi_stream_mlpg(
                 pred_acoustic,
                 acoustic_out_scaler.var_,
@@ -636,7 +643,7 @@ def predict_acoustic(
                 acoustic_config.stream_sizes,
                 acoustic_config.has_dynamic_features,
             )
-
+            # print(len(pred_acoustic[0])) # 70
     return pred_acoustic
 
 
@@ -665,6 +672,7 @@ def postprocess_acoustic(
     vibrato_scale=1.0,
     force_fix_vuv=False,
     fill_silence_to_rest=False,
+    fluc=False,
 ):
     """Post-process acoustic features
 
@@ -708,12 +716,13 @@ def postprocess_acoustic(
     hts_frame_shift = int(frame_period * 1e4)
     pitch_idx = get_pitch_index(binary_dict, numeric_dict)
 
+    # print(acoustic_config.has_dynamic_features) # [True, True, False, True, True, False]
+    # print(acoustic_config.num_windows) # 3
     static_stream_sizes = get_static_stream_sizes(
         acoustic_config.stream_sizes,
         acoustic_config.has_dynamic_features,
         acoustic_config.num_windows,
-    )
-
+    )# [60, 1, 1, 5, 2, 1]
     linguistic_features = fe.linguistic_features(
         duration_modified_labels,
         binary_dict,
@@ -724,7 +733,7 @@ def postprocess_acoustic(
     # GV post-filter
     if post_filter_type == "gv" or (
         post_filter_type == "nnsvs" and feature_type == "world"
-    ):
+    ):  # gv, world
         note_frame_indices = get_note_frame_indices(
             binary_dict, numeric_dict, linguistic_features
         )
@@ -739,13 +748,6 @@ def postprocess_acoustic(
             offset = np.argmax(mel_freq > 1200)
 
         # NOTE: apply the post-filter for note frames only
-        mgc_end_dim = static_stream_sizes[0]
-        acoustic_features[:, :mgc_end_dim] = variance_scaling(
-            acoustic_out_static_scaler.var_.reshape(-1)[:mgc_end_dim],
-            acoustic_features[:, :mgc_end_dim],
-            offset=offset,
-            note_frame_indices=note_frame_indices,
-        )
 
     # Learned post-filter using nnsvs
     if post_filter_type == "nnsvs" and postfilter_model is not None:
@@ -787,6 +789,8 @@ def postprocess_acoustic(
 
     # Generate WORLD parameters
     if feature_type == "world":
+        # print(acoustic_config.stream_sizes)
+        # print(acoustic_features[0, 60:61])
         mgc, lf0, vuv, bap = gen_spsvs_static_features(
             labels=duration_modified_labels,
             acoustic_features=acoustic_features,
@@ -850,7 +854,6 @@ def postprocess_acoustic(
         use_mcep_aperiodicity = bap.shape[-1] > 5
     if feature_type == "world" and not use_mcep_aperiodicity:
         bap = np.clip(bap, a_min=-60, a_max=0)
-
     if feature_type == "world":
         return mgc, lf0, vuv, bap
     elif feature_type == "melf0":
@@ -892,6 +895,7 @@ def predict_waveform(
     Returns:
         np.ndarray: Predicted waveform
     """
+    # print("world")
     if feature_type == "world":
         mgc, lf0, vuv, bap = multistream_features
     elif feature_type == "world_org":
@@ -923,6 +927,7 @@ def predict_waveform(
             # NOTE: WORLD-based features are already converted to raw WORLD parameters
             pass
         else:
+            # ここが実行
             f0, spectrogram, aperiodicity = gen_world_params(
                 mgc,
                 lf0,
@@ -940,6 +945,8 @@ def predict_waveform(
             sample_rate,
             frame_period,
         )
+        """"np.savetxt("base_vuv.txt", vuv, delimiter = ",")"""
+        np.set_printoptions(threshold=np.inf)
     elif vocoder_type == "pwg":
         # NOTE: So far vocoder models are trained on binary V/UV features
         vuv = (vuv > vuv_threshold).astype(np.float32)
@@ -1265,6 +1272,7 @@ def gen_spsvs_static_features(
         pitch_idx = get_pitch_index(binary_dict, numeric_dict)
 
     if np.any(has_dynamic_features):
+        # ここが実行
         static_stream_sizes = get_static_stream_sizes(
             stream_sizes, has_dynamic_features, num_windows
         )
@@ -1276,7 +1284,8 @@ def gen_spsvs_static_features(
 
     # Split multi-stream features
     streams = split_streams(acoustic_features, static_stream_sizes)
-
+    # static_stream_sizes=[60  1  1  5  2  1]
+    # print(len(streams)) == 6
     if len(streams) == 4:
         mgc, target_f0, vuv, bap = streams
         vib, vib_flags = None, None
@@ -1289,7 +1298,6 @@ def gen_spsvs_static_features(
         mgc, target_f0, vuv, bap, vib, vib_flags = streams
     else:
         raise RuntimeError("Not supported streams")
-
     linguistic_features = fe.linguistic_features(
         labels,
         binary_dict,
@@ -1299,11 +1307,11 @@ def gen_spsvs_static_features(
     )
 
     # Correct V/UV based on special phone flags
-    if force_fix_vuv:
+    if force_fix_vuv:# False
         vuv = correct_vuv_by_phone(vuv, binary_dict, linguistic_features)
 
     # F0
-    if relative_f0:
+    if relative_f0:# False
         diff_lf0 = target_f0
         f0_score = _midi_to_hz(linguistic_features, pitch_idx, False)[:, None]
         lf0_score = f0_score.copy()
@@ -1315,12 +1323,13 @@ def gen_spsvs_static_features(
         f0[vuv < vuv_threshold] = 0
         f0[np.nonzero(f0)] = np.exp(f0[np.nonzero(f0)])
     else:
+        # ここが実行
         f0 = target_f0
         f0[vuv < vuv_threshold] = 0
         f0[np.nonzero(f0)] = np.exp(f0[np.nonzero(f0)])
-
     if vib is not None:
         if vib_flags is not None:
+            # ここが実行
             # Generate sine-based vibrato
             vib_flags = vib_flags.flatten()
             m_a, m_f = vib[:, 0], vib[:, 1]
@@ -1357,6 +1366,7 @@ def gen_world_params(
     vuv_threshold=0.3,
     use_world_codec=False,
 ):
+    # ここが実行
     """Generate WORLD parameters from mgc, lf0, vuv and bap.
 
     Args:
@@ -1374,8 +1384,7 @@ def gen_world_params(
     fftlen = pyworld.get_cheaptrick_fft_size(sample_rate)
     alpha = pysptk.util.mcepalpha(sample_rate)
     use_mcep_aperiodicity = bap.shape[-1] > 5
-
-    if use_world_codec:
+    if use_world_codec:  # False diffusion True
         spectrogram = pyworld.decode_spectral_envelope(
             np.ascontiguousarray(mgc).astype(np.float64), sample_rate, fftlen
         )
@@ -1383,8 +1392,10 @@ def gen_world_params(
         spectrogram = pysptk.mc2sp(
             np.ascontiguousarray(mgc), fftlen=fftlen, alpha=alpha
         )
-
-    if use_mcep_aperiodicity:
+    # print(sample_rate, fftlen)
+    # print(mgc[0])
+    # print(spectrogram[0])
+    if use_mcep_aperiodicity:# False
         aperiodicity = pysptk.mc2sp(
             np.ascontiguousarray(bap), fftlen=fftlen, alpha=alpha
         )
@@ -1399,11 +1410,13 @@ def gen_world_params(
     aperiodicity = np.clip(aperiodicity, 0.0, 1.0)
 
     f0 = lf0.copy()
+    np.set_printoptions(threshold=np.inf)
+
     f0[np.nonzero(f0)] = np.exp(f0[np.nonzero(f0)])
     f0[vuv < vuv_threshold] = 0
 
     f0 = f0.flatten().astype(np.float64)
+
     spectrogram = spectrogram.astype(np.float64)
     aperiodicity = aperiodicity.astype(np.float64)
-
     return f0, spectrogram, aperiodicity

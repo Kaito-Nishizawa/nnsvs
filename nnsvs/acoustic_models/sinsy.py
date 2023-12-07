@@ -79,7 +79,6 @@ class ResSkipF0FFConvLSTM(BaseModel):
             nn.Linear(ff_hidden_dim, ff_hidden_dim),
             nn.ReLU(),
         )
-
         self.conv = nn.Sequential(
             nn.ReflectionPad1d(3),
             nn.Conv1d(ff_hidden_dim + 1, conv_hidden_dim, kernel_size=7, padding=0),
@@ -142,8 +141,10 @@ class ResSkipF0FFConvLSTM(BaseModel):
         """
         if isinstance(lengths, torch.Tensor):
             lengths = lengths.to("cpu")
-
+        # print(self.in_lf0_idx)
+        # print(len(x),len(x[0]),len(x[0][0]))# 1 3721 335 idx 286
         lf0_score = x[:, :, self.in_lf0_idx].unsqueeze(-1)
+        # print(lf0_score)
 
         out = self.ff(x)
         out = torch.cat([out, lf0_score], dim=-1)
@@ -154,11 +155,11 @@ class ResSkipF0FFConvLSTM(BaseModel):
         out, _ = pad_packed_sequence(out, batch_first=True)
         out = torch.cat([out, x], dim=-1) if self.skip_inputs else out
 
-        if self.use_mdn:
+        if self.use_mdn:# False
             log_pi, log_sigma, mu = self.mdn_layer(out)
         else:
-            mu = self.fc(out)
-
+            mu = self.fc(out)# 線形予測の最後
+        # print(len(x[0][0]),len(mu[0][0]))# 335 206
         lf0_pred, lf0_residual = predict_lf0_with_residual(
             x,
             mu,
@@ -179,6 +180,10 @@ class ResSkipF0FFConvLSTM(BaseModel):
         if self.use_mdn:
             return (log_pi, log_sigma, mu), lf0_residual
         else:
+            # print(len(mu[0][0]), len(lf0_residual[0])) # (3721,206) (206)
+            # print("aaaa")
+            # print(mu[0][0])
+            # print("-----------")
             return mu, lf0_residual
 
     def inference(self, x, lengths=None):
@@ -191,9 +196,12 @@ class ResSkipF0FFConvLSTM(BaseModel):
         Returns:
             tuple: (mu, sigma) if use_mdn, (output, ) otherwise
         """
-        if self.use_mdn:
+        if self.use_mdn:# False
             (log_pi, log_sigma, mu), _ = self(x, lengths)
             sigma, mu = mdn_get_most_probable_sigma_and_mu(log_pi, log_sigma, mu)
             return mu, sigma
         else:
+            # print(lengths)
+            # print(len(self(x, lengths)))
+            # print(self(x, lengths)[0][0][])
             return self(x, lengths)[0]

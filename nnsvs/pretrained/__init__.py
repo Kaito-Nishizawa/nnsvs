@@ -21,6 +21,9 @@ model_registry = {
         "20220322_yoko_timelag_mdn_duration_mdn_acoustic_resf0conv.tar.gz?dl=1",
         "_target_": "nnsvs.svs:SPSVS",
     },
+    "r9y9/namine_ritsu_diffusion": {
+        "_target_": "nnsvs.svs:SPSVS",
+    }
 }
 
 
@@ -48,9 +51,13 @@ Available models:
         )
 
     # download if not exists
-    model_dir = retrieve_pretrained_model(name)
+    if "url" in model_registry[name]:
+        model_dir = retrieve_pretrained_model(name)
+    else:
+        model_dir = Path(CACHE_DIR) / name
 
     # create an instance
+    # print(dynamic_import(model_registry[name]["_target_"])(model_dir, *args, **kwargs))
     return dynamic_import(model_registry[name]["_target_"])(model_dir, *args, **kwargs)
 
 

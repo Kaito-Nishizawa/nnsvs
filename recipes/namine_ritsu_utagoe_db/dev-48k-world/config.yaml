@@ -7,7 +7,7 @@ tag:
 
 ## Directory of Unzipped singing voice database
 # PLEASE CHANGE THE PATH BASED ON YOUR ENVIRONMENT
-db_root: "~/data/「波音リツ」歌声データベースVer2"
+db_root: "/home/nishizawa/data/「波音リツ」歌声データベースVer2"
 
 ## Output directory
 # All the generated labels, intermediate files, and segmented wav files

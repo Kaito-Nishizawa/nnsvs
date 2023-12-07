@@ -8,15 +8,16 @@ if [ $# -ne 2 ];then
 fi
 
 config_path=$1
-
+echo "$1"
 # Step 1:
 # Generate full-context labels from music xml using pysinsy/utaupy and round them.
 # pysinsy: https://github.com/r9y9/pysinsy
 # utaupy: https://github.com/oatsu-gh/utaupy
-
 if [ $2 = "musicxml" ]; then
+    echo $script_dir
     python $script_dir/musicxml2lab.py $config_path
 elif [ $2 = "ust" ]; then
+    echo $script_dir
     python $script_dir/ust2lab.py $config_path
 else
     echo "Unsupported file format."

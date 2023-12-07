@@ -44,7 +44,8 @@ def predict_lf0_with_residual(
         # MDN case (B, T, num_gaussians, C) -> (B, T, num_gaussians)
         lf0_residual = out_feats[:, :, :, out_lf0_idx]
     else:
-        # (B, T, C) -> (B, T, 1)
+        # (B, T, C) -> (B, T, 1) ここが実行
+        # print(out_lf0_idx) 180
         lf0_residual = out_feats[:, :, out_lf0_idx].unsqueeze(-1)
     lf0_residual = max_lf0_ratio * torch.tanh(lf0_residual)
 

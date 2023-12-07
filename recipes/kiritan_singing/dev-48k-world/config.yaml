@@ -10,7 +10,7 @@ tag:
 ###########################################################
 
 # **CHANGE** this to your database path
-wav_root:
+wav_root: "/home/nishizawa/data/kiritan_singing/wav"
 
 ###########################################################
 #                FEATURE EXTRACTION SETTING               #
