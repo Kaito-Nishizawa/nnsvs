@@ -199,8 +199,6 @@ class GaussianDiffusion(BaseModel):
             x=x, t=t, cond=cond, clip_denoised=clip_denoised
         )
         noise = noise_like(x.shape, noise_fn, device, repeat_noise)
-        """if t % 50 == 0:
-            print(noise[:, :, 0::20, 0::500])"""
         # print(noise)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
@@ -216,6 +214,7 @@ class GaussianDiffusion(BaseModel):
         )
         # model_meanやmodel_log_varianceは常に固定
         return torch.randn(model_mean, model_log_variance)
+
     @torch.no_grad()
     def p_sample_plms(self, x, t, interval, cond):
         """
@@ -344,5 +343,8 @@ class GaussianDiffusion(BaseModel):
                 x = self.p_sample(
                     x, torch.full((B,), i, device=device, dtype=torch.long), cond
                 )
+                """x = self.p_sample_test(
+                    x, torch.full((B,), i, device=device, dtype=torch.long), cond
+                )"""
         x = self._denorm(x[:, 0].transpose(1, 2), self.norm_scale)
         return x

@@ -282,6 +282,7 @@ def predict_duration(
     # Apply model
     x = torch.from_numpy(duration_linguistic_features).float().to(device)
     x = x.view(1, -1, x.size(-1))
+
     if duration_model.prediction_type() == PredictionType.PROBABILISTIC:
         # (B, T, D_out)
         max_mu, max_sigma = duration_model.inference(x, [x.shape[1]])
@@ -590,6 +591,7 @@ def predict_acoustic(
     # Predict acoustic features
     x = torch.from_numpy(linguistic_features).float().to(device)
     x = x.view(1, -1, x.size(-1))
+
     # type = MULTISTREAM_HYBRID diffusion
     # type = DETERMINISTIC yoko
     if acoustic_model.prediction_type() in [

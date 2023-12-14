@@ -192,12 +192,9 @@ class ResSkipF0FFConvLSTM(BaseModel):
         Returns:
             tuple: (mu, sigma) if use_mdn, (output, ) otherwise
         """
-        if self.use_mdn:# False
+        if self.use_mdn:  # False
             (log_pi, log_sigma, mu), _ = self(x, lengths)
             sigma, mu = mdn_get_most_probable_sigma_and_mu(log_pi, log_sigma, mu)
             return mu, sigma
         else:
-            # print(lengths)
-            # print(len(self(x, lengths)))
-            # print(self(x, lengths)[0][0][])
             return self(x, lengths)[0]

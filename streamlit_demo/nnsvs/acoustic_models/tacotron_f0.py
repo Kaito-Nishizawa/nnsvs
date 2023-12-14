@@ -726,7 +726,7 @@ class BiLSTMResF0NonAttentiveDecoder(BaseModel):
         if isinstance(lengths, torch.Tensor):
             lengths = lengths.to("cpu")
 
-        out = self.ff(x) # ここは一緒
+        out = self.ff(x)  # ここは一緒
         out = torch.cat([out, lf0_score], dim=-1)
 
         out = self.conv(out.transpose(1, 2)).transpose(1, 2)  # ここは一緒
@@ -737,7 +737,7 @@ class BiLSTMResF0NonAttentiveDecoder(BaseModel):
         # NOTE: need to concat the lf0 score to the output of the lstm to tell
         # the decoder the lf0
         out = torch.cat([out, lf0_score], dim=-1)
-        outs, lf0_residual = self.decoder(out, lengths, y)
+        outs, lf0_residual = self.decoder(out, lengths, y)  # ここでdropout
         return outs, lf0_residual  # ここは一緒
 
     def inference(self, x, lengths=None):

@@ -608,7 +608,6 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             return (mgc, lf0, vuv, bap), lf0_residual
 
     def inference(self, x, lengths=None, fluc=[False, False, False]):
-        # print(lengths)
         return pad_inference(
             model=self,
             x=x,
