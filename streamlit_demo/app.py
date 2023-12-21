@@ -1,5 +1,6 @@
 import tempfile
 import os
+import pysinsy
 import numpy as np
 import soundfile as sf
 import streamlit as st
