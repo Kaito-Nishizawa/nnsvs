@@ -1,6 +1,7 @@
 from warnings import warn
 # import inspect
 import librosa
+import random
 import numpy as np
 import pyloudnorm as pyln
 import pysptk
@@ -167,6 +168,11 @@ def predict_timelag(
             # ここが実行 model.py Class(MDN)
             # Apply denormalization
             if fluc:
+                a = random.randrange(200)
+                torch.manual_seed(a)
+                f = open("random_seed.txt", "a")
+                f.write(f"lag {str(a)} ")
+                f.close()
                 pred_timelag = torch.normal(max_mu, max_sigma).squeeze(0).cpu().data.numpy()
             else:
                 pred_timelag = max_mu.squeeze(0).cpu().data.numpy()
@@ -297,6 +303,11 @@ def predict_duration(
         )
         max_sigma_sq = np.maximum(max_sigma_sq, 1e-14)
         if fluc:
+            a = random.randrange(200)
+            torch.manual_seed(a)
+            f = open("random_seed.txt", "a")
+            f.write(f"dur {str(a)} ")
+            f.close()
             duration = torch.normal(max_mu, max_sigma).squeeze(0).cpu().data.numpy()
         else:
             duration = max_mu.squeeze(0).cpu().data.numpy()

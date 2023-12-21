@@ -519,6 +519,9 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
         else:
             rand_seed = no_fluc
 
+        f = open("random_seed.txt", "a")
+        f.write(f"aco {str(rand_seed)}\n")
+
         # Predict continuous log-F0 first
         torch.manual_seed(rand_seed[0])
         if is_inference:  # True
