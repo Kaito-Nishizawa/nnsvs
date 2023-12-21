@@ -1,8 +1,7 @@
 import tempfile
 import os
-from os.path import join
-import numpy as np
 import pysinsy
+import numpy as np
 import soundfile as sf
 import streamlit as st
 from nnmnkwii.io import hts
