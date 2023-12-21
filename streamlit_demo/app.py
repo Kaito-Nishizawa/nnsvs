@@ -5,6 +5,7 @@ import numpy as np
 import soundfile as sf
 import streamlit as st
 from nnmnkwii.io import hts
+import pysinsy
 from nnsvs.pretrained import create_svs_engine
 
 st.title("NNSVS Demo")
