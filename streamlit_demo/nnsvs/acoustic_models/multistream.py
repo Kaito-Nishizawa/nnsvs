@@ -509,19 +509,18 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             outs = split_streams(y, self.stream_sizes)
             y_mgc, y_lf0, y_vuv, y_bap = outs
 
-        # Predict continuous log-F0 first
+        # 音響特徴量生成のための乱数の準備
+        no_fluc = [45, 6, 100]
         if any(fluc):
             torch.seed()
-
-        rand_seed = []
-        no_fluc = [45, 6, 100]
-        for i in range(3):
-            rand_seed.append(random.randrange(200) if fluc[i] else no_fluc[i])
-        print(rand_seed)
-        if fluc[0]:
-            torch.manual_seed(torch.seed())
+            rand_seed = []
+            for i in range(3):
+                rand_seed.append(random.randrange(200) if fluc[i] else no_fluc[i])
         else:
-            torch.manual_seed(45)
+            rand_seed = no_fluc
+
+        # Predict continuous log-F0 first
+        torch.manual_seed(rand_seed[0])
         if is_inference:  # True
             lf0, lf0_residual = self.lf0_model.inference(x, lengths), None
 
@@ -532,10 +531,7 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
         else:
             lf0, lf0_residual = self.lf0_model(x, lengths, y_lf0)
         # Predict spectral parameters
-        if fluc[1]:
-            torch.manual_seed(torch.seed())
-        else:
-            torch.manual_seed(6)
+        torch.manual_seed(rand_seed[1])
         if is_inference:  # True
             mgc_inp = torch.cat([x, lf0_cond], dim=-1)
             mgc = self.mgc_model.inference(mgc_inp, lengths)
@@ -544,10 +540,7 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             mgc = self.mgc_model(mgc_inp, lengths, y_mgc)
 
         # Predict aperiodic parameters
-        if fluc[2]:
-            torch.manual_seed(torch.seed())
-        else:
-            torch.manual_seed(100)
+        torch.manual_seed(rand_seed[2])
         if is_inference:  # True
             bap_inp = torch.cat([x, lf0_cond], dim=-1)
             bap = self.bap_model.inference(bap_inp, lengths)
