@@ -1,4 +1,5 @@
 import torch
+import random
 from nnsvs.acoustic_models.util import pad_inference
 from nnsvs.base import BaseModel, PredictionType
 from nnsvs.multistream import split_streams
@@ -509,7 +510,14 @@ class NPSSMDNMultistreamParametricModel(BaseModel):
             y_mgc, y_lf0, y_vuv, y_bap = outs
 
         # Predict continuous log-F0 first
+        if any(fluc):
+            torch.seed()
 
+        rand_seed = []
+        no_fluc = [45, 6, 100]
+        for i in range(3):
+            rand_seed.append(random.randrange(200) if fluc[i] else no_fluc[i])
+        print(rand_seed)
         if fluc[0]:
             torch.manual_seed(torch.seed())
         else:
