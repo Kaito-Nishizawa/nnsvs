@@ -23,7 +23,6 @@ num = st.number_input("Input number that you want to create", value=1)
 st.markdown("### Choose elements for fluc")
 # 揺らぎ成分の選択
 col = st.columns(3)
-fluc = [False, False, False]
 fluc_elem = ["lag", "duration", "f0", "mgc", "bap"]
 timelag = col[0].checkbox(label=fluc_elem[0])
 duration = col[1].checkbox(label=fluc_elem[1])
