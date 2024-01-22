@@ -905,7 +905,6 @@ def predict_waveform(
     Returns:
         np.ndarray: Predicted waveform
     """
-    # print("world")
     if feature_type == "world":
         mgc, lf0, vuv, bap = multistream_features
     elif feature_type == "world_org":
@@ -981,7 +980,7 @@ def predict_waveform(
                 .to(device)
             )
         wav = vocoder.inference(voc_inp).view(-1).to("cpu").numpy()
-    elif vocoder_type == "usfgan":
+    elif vocoder_type == "usfgan": # これ
         if feature_type in ["world", "neutrino"]:
             fftlen = pyworld.get_cheaptrick_fft_size(sample_rate)
             if use_mcep_aperiodicity:

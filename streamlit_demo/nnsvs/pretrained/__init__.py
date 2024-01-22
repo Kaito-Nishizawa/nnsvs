@@ -23,6 +23,9 @@ model_registry = {
     },
     "r9y9/namine_ritsu_diffusion": {
         "_target_": "nnsvs.svs:SPSVS",
+    },
+    "r9y9/natsume_yuki": {
+        "_target_": "nnsvs.svs:SPSVS",
     }
 }
 

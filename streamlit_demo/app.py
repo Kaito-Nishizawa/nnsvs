@@ -5,7 +5,6 @@ import numpy as np
 import soundfile as sf
 import streamlit as st
 from nnmnkwii.io import hts
-import pysinsy
 from nnsvs.pretrained import create_svs_engine
 
 st.title("NNSVS Demo")
@@ -13,7 +12,8 @@ st.markdown("Upload your .xml music file with text as input to make it sing.")
 
 models = {
     "yoko": "r9y9/yoko_latest",
-    "namine ritsu": "r9y9/namine_ritsu_diffusion"
+    "namine ritsu": "r9y9/namine_ritsu_diffusion",
+    "natsume yuki": "r9y9/natsume_yuki",
 }
 
 voice_option = st.selectbox("Select the voice", models.keys())

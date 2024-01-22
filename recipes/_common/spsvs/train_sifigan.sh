@@ -12,13 +12,11 @@ if [[ -z "${vocoder_model}" ]]; then
     echo "Note that conf/train_sifigan/generator/\${vocoder_model}.yaml must exist."
     exit 1
 fi
-
 if [[ ${acoustic_features} == *"melf0"* ]]; then
     feature_type="melf0"
 else
     feature_type="world"
 fi
-
 if [ -z "${RUNNING_TEST_RECIPES+x}" ]; then
     sifigan_data_config=nnsvs_${feature_type}_sr48k
     sifigan_train_config=nnsvs_sifigan
@@ -29,7 +27,6 @@ else
     sifigan_train_config=nnsvs_sifigan_test
     sifigan_discriminator_config=nnsvs_hifigan
 fi
-
 # Convert NNSVS's data to usfgan's format
 # NOTE: sifigan's format is the same as the usfgan
 if [ ! -d dump_usfgan ]; then
@@ -39,7 +36,6 @@ fi
 # NOTE: copy normalization stats to expdir for convenience
 mkdir -p $expdir/$vocoder_model
 cp -v $dump_norm_dir/in_vocoder*.npy $expdir/$vocoder_model
-
 # NOTE: To get the maximum performance, it is highly recommended to configure
 # training options in detail
 # NOTE: conf/sifigan/generator/${vocoder_model}.yaml must exist
