@@ -13,6 +13,7 @@ st.markdown("Upload your .xml music file with text as input to make it sing.")
 models = {
     "yoko": "r9y9/yoko_latest",
     "namine ritsu": "r9y9/namine_ritsu_diffusion",
+    "namine ritsu_sifigan": "r9y9/namine_ritsu_diffusion_sifigan",
     "natsume yuki": "r9y9/natsume_yuki",
 }
 
@@ -64,7 +65,9 @@ if st.button("synthesis") and uploaded_file:
                     labels = hts.load(f.name)
 
             engine = create_svs_engine(models[voice_option])
-            wav, sr = engine.svs(labels, fluc=fluc)
+            if "sifigan" in models[voice_option].lower() or "usfgan" in models[voice_option].lower():
+                vocoder = "usfgan"
+            wav, sr = engine.svs(labels, fluc=fluc, vocoder_type=vocoder)
 
             # show audio player
             with tempfile.NamedTemporaryFile(suffix=".wav") as f:
