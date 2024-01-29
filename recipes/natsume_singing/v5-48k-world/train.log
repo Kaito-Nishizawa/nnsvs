@@ -1,0 +1,5902 @@
+[2024-01-18 12:15:37,144][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:15:37,450][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:15:37,938][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:15:37,943][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:15:37,943][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:15:37,944][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:15:39,693][INFO][train | 765] Start a new training process.
+[2024-01-18 12:16:01,680][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:16:01,789][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:16:02,219][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:16:02,221][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:16:02,221][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:16:02,222][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:16:03,317][INFO][train | 765] Start a new training process.
+[2024-01-18 12:16:24,255][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:16:24,354][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:16:24,820][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:16:24,823][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:16:24,823][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:16:24,823][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:16:25,898][INFO][train | 765] Start a new training process.
+[2024-01-18 12:19:06,062][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:19:06,160][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:19:06,596][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:19:06,598][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:19:06,598][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:19:06,599][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:19:07,619][INFO][train | 765] Start a new training process.
+[2024-01-18 12:19:42,818][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:19:42,913][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:19:43,333][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:19:43,335][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:19:43,336][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:19:43,336][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:19:44,360][INFO][train | 765] Start a new training process.
+[2024-01-18 12:22:13,817][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:22:13,931][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:22:14,420][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:22:14,422][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:22:14,423][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:22:14,423][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:22:16,981][INFO][train | 765] Start a new training process.
+[2024-01-18 12:22:43,768][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:22:43,881][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:22:44,332][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:22:44,334][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:22:44,335][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:22:44,335][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:22:45,510][INFO][train | 765] Start a new training process.
+[2024-01-18 12:24:16,156][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:24:16,268][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:24:16,747][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:24:16,750][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:24:16,750][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:24:16,751][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:24:18,122][INFO][train | 765] Start a new training process.
+[2024-01-18 12:24:43,980][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:24:44,088][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:24:44,542][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:24:44,545][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:24:44,546][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:24:44,546][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:24:45,610][INFO][train | 765] Start a new training process.
+[2024-01-18 12:25:27,020][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:25:27,115][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:25:27,581][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:25:27,583][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:25:27,583][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:25:27,584][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:25:28,654][INFO][train | 765] Start a new training process.
+[2024-01-18 12:25:56,157][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:25:56,264][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:25:56,779][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:25:56,781][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:25:56,782][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:25:56,782][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:25:58,754][INFO][train | 765] Start a new training process.
+[2024-01-18 12:26:46,473][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:26:46,576][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:26:47,007][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:26:47,009][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:26:47,009][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:26:47,010][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:26:48,121][INFO][train | 765] Start a new training process.
+[2024-01-18 12:27:25,488][INFO][train | 636] out_dir: exp/natsumeyuuri/sifigan
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 43
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 3
+  - 2
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 6
+  - 4
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:27:25,592][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:27:26,019][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:27:26,022][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:27:26,022][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:27:26,023][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:27:27,075][INFO][train | 765] Start a new training process.
+[2024-01-18 12:32:10,001][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:32:10,112][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:32:10,583][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:32:10,585][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:32:10,586][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:32:10,586][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:32:11,802][INFO][train | 765] Start a new training process.
+[2024-01-18 12:32:50,423][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:32:50,527][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:32:50,988][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:32:50,990][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:32:50,990][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:32:50,990][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:32:52,194][INFO][train | 765] Start a new training process.
+[2024-01-18 12:35:24,110][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:35:24,213][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:35:24,655][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:35:24,658][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:35:24,658][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:35:24,658][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:35:25,806][INFO][train | 765] Start a new training process.
+[2024-01-18 12:37:16,532][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:37:16,634][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:37:17,054][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:37:17,056][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:37:17,056][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:37:17,057][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:37:18,114][INFO][train | 765] Start a new training process.
+[2024-01-18 12:38:08,155][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:38:08,259][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:38:08,726][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:38:08,728][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:38:08,729][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:38:08,729][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:38:09,879][INFO][train | 765] Start a new training process.
+[2024-01-18 12:41:01,320][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:41:01,426][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:41:01,876][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:41:01,878][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:41:01,879][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:41:01,879][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:41:02,998][INFO][train | 765] Start a new training process.
+[2024-01-18 12:43:05,079][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:43:05,184][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:43:05,633][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:43:05,635][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:43:05,636][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:43:05,636][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:43:06,740][INFO][train | 765] Start a new training process.
+[2024-01-18 12:43:51,797][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:43:51,910][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:43:52,399][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:43:52,401][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:43:52,402][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:43:52,402][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:43:53,600][INFO][train | 765] Start a new training process.
+[2024-01-18 12:45:00,964][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:45:01,072][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:45:01,551][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:45:01,553][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:45:01,554][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:45:01,554][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:45:02,714][INFO][train | 765] Start a new training process.
+[2024-01-18 12:46:04,856][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:46:04,964][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:46:05,399][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:46:05,401][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:46:05,401][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:46:05,402][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:46:06,735][INFO][train | 765] Start a new training process.
+[2024-01-18 12:47:33,136][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-18 12:47:33,237][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:47:33,684][INFO][train | 654] The number of training files = 280.
+[2024-01-18 12:47:33,687][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-18 12:47:33,687][INFO][train | 666] The number of validation files = 3.
+[2024-01-18 12:47:33,688][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-18 12:47:34,876][INFO][train | 765] Start a new training process.
+[2024-01-18 12:48:12,079][INFO][train | 270] (Steps: 35) Finished 1 epoch training (35 steps per epoch).
+[2024-01-18 12:48:37,600][INFO][train | 270] (Steps: 70) Finished 2 epoch training (35 steps per epoch).
+[2024-01-26 15:22:57,454][INFO][train | 636] out_dir: exp/natsumeyuuri/nnsvs_world_sifigan_sr48k
+seed: 12345
+generator:
+  _target_: sifigan.models.SiFiGANGenerator
+  in_channels: 65
+  out_channels: 1
+  channels: 512
+  kernel_size: 7
+  upsample_scales:
+  - 5
+  - 4
+  - 4
+  - 3
+  upsample_kernel_sizes:
+  - 10
+  - 8
+  - 8
+  - 6
+  source_network_params:
+    resblock_kernel_size: 3
+    resblock_dilations:
+    - - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+      - 4
+    - - 1
+      - 2
+      - 4
+      - 8
+    use_additional_convs: true
+  filter_network_params:
+    resblock_kernel_sizes:
+    - 3
+    - 5
+    - 7
+    resblock_dilations:
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    - - 1
+      - 3
+      - 5
+    use_additional_convs: false
+  share_upsamples: false
+  share_downsamples: false
+  bias: true
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+    negative_slope: 0.1
+  use_weight_norm: true
+discriminator:
+  _target_: sifigan.models.UnivNetMultiResolutionMultiPeriodDiscriminator
+  fft_sizes:
+  - 1024
+  - 2048
+  - 512
+  hop_sizes:
+  - 120
+  - 240
+  - 50
+  win_lengths:
+  - 600
+  - 1200
+  - 240
+  window: hann_window
+  spectral_discriminator_params:
+    channels: 32
+    kernel_sizes:
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 9
+    - - 3
+      - 3
+    - - 3
+      - 3
+    strides:
+    - - 1
+      - 1
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 2
+    - - 1
+      - 1
+    - - 1
+      - 1
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.2
+  periods:
+  - 2
+  - 3
+  - 5
+  - 7
+  - 11
+  period_discriminator_params:
+    in_channels: 1
+    out_channels: 1
+    kernel_sizes:
+    - 5
+    - 3
+    channels: 32
+    downsample_scales:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 1
+    max_downsample_channels: 1024
+    bias: true
+    nonlinear_activation: LeakyReLU
+    nonlinear_activation_params:
+      negative_slope: 0.1
+    use_weight_norm: true
+    use_spectral_norm: false
+train:
+  discriminator_train_start_steps: 0
+  train_max_steps: 600000
+  save_interval_steps: 100000
+  eval_interval_steps: 10000
+  log_interval_steps: 10000
+  resume: null
+  lambda_mel: 45.0
+  lambda_reg: 1.0
+  lambda_adv: 1.0
+  lambda_fm: 0.0
+  mel_loss:
+    _target_: sifigan.losses.MelSpectralLoss
+    fft_size: 2048
+    hop_size: 512
+    win_length: 2048
+    window: hann_window
+    sample_rate: 48000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+  reg_loss:
+    _target_: sifigan.losses.ResidualLoss
+    sample_rate: 48000
+    fft_size: 4096
+    hop_size: 240
+    f0_floor: 70
+    f0_ceil: 1000
+    n_mels: 80
+    fmin: 0
+    fmax: null
+    power: false
+    elim_0th: true
+  adv_loss:
+    _target_: sifigan.losses.AdversarialLoss
+    average_by_discriminators: false
+    loss_type: mse
+  fm_loss:
+    _target_: sifigan.losses.FeatureMatchLoss
+    average_by_layers: false
+  generator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  generator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  generator_grad_norm: 10
+  discriminator_optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0002
+    betas:
+    - 0.5
+    - 0.9
+    weight_decay: 0.0
+  discriminator_scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    gamma: 0.5
+    milestones:
+    - 200000
+    - 400000
+    - 600000
+    - 800000
+  discriminator_grad_norm: 10
+data:
+  train_audio: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.scp
+  train_feat: dump_usfgan/scp/natsumeyuuri_sr48000_train_no_dev.list
+  valid_audio: dump_usfgan/scp/natsumeyuuri_sr48000_dev.scp
+  valid_feat: dump_usfgan/scp/natsumeyuuri_sr48000_dev.list
+  eval_feat: dump_usfgan/scp/natsumeyuuri_sr48000_eval.list
+  stats: dump_usfgan/stats/scaler.joblib
+  allow_cache: false
+  sample_rate: 48000
+  hop_size: 240
+  dense_factors:
+  - 0.5
+  - 1
+  - 4
+  - 8
+  sine_amp: 0.1
+  noise_amp: 0.003
+  signal_types:
+  - sine
+  sine_f0_type: cf0
+  df_f0_type: cf0
+  aux_feats:
+  - mcep
+  - codeap
+  batch_max_length: 24000
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  remove_short_samples: true
+
+[2024-01-26 15:22:57,977][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-26 15:22:59,298][INFO][train | 654] The number of training files = 280.
+[2024-01-26 15:22:59,305][INFO][audio_feat_dataset | 110] Feature type : ['mcep', 'codeap']
+[2024-01-26 15:22:59,306][INFO][train | 666] The number of validation files = 3.
+[2024-01-26 15:22:59,306][INFO][features | 101] Use ['sine'] for generator input signals.
+[2024-01-26 15:23:01,154][INFO][train | 765] Start a new training process.

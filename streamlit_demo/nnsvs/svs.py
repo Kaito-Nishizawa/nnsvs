@@ -555,7 +555,7 @@ Acoustic model: {acoustic_str}
                 """Pre-trained vocodr model is not found.
 WORLD is only supported for waveform generation"""
             )
-
+        # print(vocoder_type, self.feature_type) world, world
         if vocoder_type == "auto":
             if self.feature_type == "melf0":
                 assert self.vocoder is not None
