@@ -35,9 +35,11 @@ for ust_path in tqdm(files):
     for as_mono in [True, False]:
         n = "generated_mono" if as_mono else "generated_full"
         dst_dir = join(config["out_dir"], f"{n}")
+        # print(dst_dir)
         os.makedirs(dst_dir, exist_ok=True)
 
         lab_path = join(dst_dir, name + ".lab")
+        # print(lab_path)
 
         ust2hts(
             ust_path, lab_path, table_path, strict_sinsy_style=False, as_mono=as_mono

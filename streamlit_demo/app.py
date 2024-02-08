@@ -66,8 +66,9 @@ if st.button("synthesis") and uploaded_file:
 
             engine = create_svs_engine(models[voice_option])
             if "sifigan" in models[voice_option].lower() or "usfgan" in models[voice_option].lower():
-                vocoder = "usfgan"
-            wav, sr = engine.svs(labels, fluc=fluc, vocoder_type=vocoder)
+                wav, sr = engine.svs(labels, fluc=fluc, vocoder_type="usfgan")
+            else:
+                wav, sr = engine.svs(labels, fluc=fluc)
 
             # show audio player
             with tempfile.NamedTemporaryFile(suffix=".wav") as f:
